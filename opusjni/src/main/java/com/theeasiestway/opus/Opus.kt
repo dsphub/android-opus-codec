@@ -53,11 +53,13 @@ class Opus {
     fun encoderSetComplexity(complexity: Constants.Complexity): Int {
         return encoderSetComplexity(complexity.v)
     }
+
     private external fun encoderSetComplexity(complexity: Int): Int
 
     fun encode(bytes: ByteArray, frameSize: Constants.FrameSize): ByteArray? {
         return encode(bytes, frameSize.v)
     }
+
     private external fun encode(bytes: ByteArray, frameSize: Int): ByteArray?
 
     fun encode(shorts: ShortArray, frameSize: Constants.FrameSize): ShortArray? {
@@ -95,7 +97,25 @@ class Opus {
     fun decode(shorts: ShortArray, frameSize: Constants.FrameSize): ShortArray? {
         return decode(shorts, frameSize.v)
     }
+
     private external fun decode(shorts: ShortArray, frameSize: Int): ShortArray?
+
+    fun decodeFloat(
+        dt: ByteArray,
+        len: Int,
+        pcm: FloatArray,
+        frameSize: Constants.FrameSize
+    ): Int {
+        return decodeFloat(dt, len, pcm, frameSize.v)
+    }
+
+    private external fun decodeFloat(
+        dt: ByteArray,
+        len: Int,
+        pcm: FloatArray,
+        frameSize: Int
+    ): Int
+
     external fun decoderRelease()
 
     //

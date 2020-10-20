@@ -189,17 +189,14 @@ std::vector<uint8_t> CodecOpus::decode(uint8_t *bytes, int length, int frameSize
     return result;
 }
 
-/*
- int opus_decode_float(OpusDecoder *st, const unsigned char *data,
-      opus_int32 len, opus_val16 *pcm, int frame_size, int decode_fec)
-{
-   if(frame_size<=0)
-      return OPUS_BAD_ARG;
-   return opus_decode_native(st, data, len, pcm, frame_size, decode_fec, 0, NULL, 0);
+int CodecOpus::decodeFloat(uint8_t *data, int length, float *pcm, int frameSize) {
+    int ret = opus_decode_float(decoder, (unsigned char *) data, (opus_int32) length, pcm,
+                                frameSize, 0);  //TODO pcm type
+    if (ret < 0) {
+        LOGE(TAG, "[decodeFloat] ret: %d; error: %s", ret, opus_strerror(ret));
+    }
+    return ret;
 }
-
-
- */
 
 void CodecOpus::decoderRelease() {
     decoderNumChannels = -1;

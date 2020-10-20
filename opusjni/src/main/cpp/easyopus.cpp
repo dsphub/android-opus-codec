@@ -143,6 +143,23 @@ Java_com_theeasiestway_opus_Opus_decode___3SI(JNIEnv *env, jobject thiz, jshortA
 }
 
 extern "C"
+JNIEXPORT jint JNICALL
+Java_com_theeasiestway_opus_Opus_decodeFloat(
+        JNIEnv *env, jobject thiz,
+        jbyteArray jdata, jint len,
+        jfloatArray jpcm, jint frame_size
+) {
+    jbyte *data = env->GetByteArrayElements(jdata, 0);
+    jfloat *pcm = env->GetFloatArrayElements(jpcm, 0);
+
+    int ret = codec.decodeFloat((unsigned char *) jdata, (int) len, (jfloat *) jpcm, frame_size);
+
+    env->ReleaseFloatArrayElements(jpcm, pcm, 0);
+    env->ReleaseByteArrayElements(jdata, data, 0);
+    return (jint) ret;
+}
+
+extern "C"
 JNIEXPORT void JNICALL
 Java_com_theeasiestway_opus_Opus_decoderRelease(JNIEnv *env, jobject thiz) {
     codec.decoderRelease();

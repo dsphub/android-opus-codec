@@ -28,6 +28,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var vStop: Button
     private lateinit var vBytes: RadioButton
     private lateinit var vShorts: RadioButton
+    private lateinit var vFloats: RadioButton
     private lateinit var vMono: RadioButton
     private lateinit var vStereo: RadioButton
     private lateinit var vConvert: CheckBox
@@ -40,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var DEF_FRAME_SIZE: Constants.FrameSize
     private lateinit var FRAME_SIZE_SHORT: Constants.FrameSize
     private lateinit var FRAME_SIZE_BYTE: Constants.FrameSize
+    private lateinit var FRAME_SIZE_FLOAT: Constants.FrameSize
 
     private var runLoop = false
     private var needToConvert = false
@@ -57,6 +59,7 @@ class MainActivity : AppCompatActivity() {
 
         vBytes = findViewById(R.id.vHandleBytes)
         vShorts = findViewById(R.id.vHandleShorts)
+        vFloats = findViewById(R.id.vHandleFloats)
         vMono = findViewById(R.id.vMono)
         vStereo = findViewById(R.id.vStereo)
         vConvert = findViewById(R.id.vConvert)
@@ -129,6 +132,7 @@ class MainActivity : AppCompatActivity() {
         vSampleRateSeek.isEnabled = true
         vBytes.isEnabled = true
         vShorts.isEnabled = true
+        vFloats.isEnabled = true
         vMono.isEnabled = true
         vStereo.isEnabled = true
     }
@@ -140,10 +144,14 @@ class MainActivity : AppCompatActivity() {
         vSampleRateSeek.isEnabled = false
         vBytes.isEnabled = false
         vShorts.isEnabled = false
+        vFloats.isEnabled = false
         vMono.isEnabled = false
         vStereo.isEnabled = false
 
+        val handleBytes = vBytes.isChecked
         val handleShorts = vShorts.isChecked
+        val handleFloats = vFloats.isChecked
+        d { "startLoop b=$handleBytes s=$handleShorts f=$handleFloats" }
         recalculateCodecValues()
 
         codec.encoderCreate(SAMPLE_RATE, CHANNELS, APPLICATION)
@@ -155,7 +163,11 @@ class MainActivity : AppCompatActivity() {
         runLoop = true
         Thread {
             while (runLoop) {
-                if (handleShorts) handleShorts() else handleBytes()
+                when {
+                    handleBytes -> handleBytes()
+                    handleShorts -> handleShorts()
+                    handleFloats -> handleFloats()
+                }
             }
             if (!runLoop) {
                 codec.encoderRelease()
@@ -168,7 +180,35 @@ class MainActivity : AppCompatActivity() {
         runLoop = false
     }
 
+    private fun handleFloats() {
+        d { "handleFloats" }
+        val frame = ControllerAudio.getFrameFloat() ?: return
+        val shorts = ByteArray(frame.size)
+        for ((id, float) in frame.withIndex()) {
+            shorts[id] = (Byte.MAX_VALUE * float.coerceIn(-1.0f, 1.0f)
+                .toShort()).toByte() //TODO to converter
+            d { "handleFloats f=$float b=${shorts[id]}" }
+        }
+
+        val encoded = codec.encode(shorts, FRAME_SIZE_FLOAT) ?: return
+        Log.d(
+            TAG,
+            "encoded: ${frame.size} floats of ${if (CHANNELS.v == 1) "MONO" else "STEREO"} audio into ${encoded.size} floats"
+        )
+        val decoded = FloatArray(frame.size)
+        codec.decodeFloat(encoded, encoded.size, decoded, FRAME_SIZE_FLOAT)
+        Log.d(TAG, "decoded: ${decoded.size} floats")
+
+//        if (needToConvert) {
+//            val converted = codec.convert(decoded) ?: return
+//            Log.d(TAG, "converted: ${decoded.size} shorts into ${converted.size} bytes")
+//            ControllerAudio.write(converted)
+//        } else ControllerAudio.write(decoded)
+        Log.d(TAG, "===========================================")
+    }
+
     private fun handleShorts() {
+        d { "handleShorts" }
         val frame = ControllerAudio.getFrameShort() ?: return
         val encoded = codec.encode(frame, FRAME_SIZE_SHORT) ?: return
         Log.d(
@@ -187,6 +227,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleBytes() {
+        d { "handleBytes" }
         val frame = ControllerAudio.getFrame() ?: return
         val encoded = codec.encode(frame, FRAME_SIZE_BYTE) ?: return
         Log.d(
