@@ -1,3 +1,4 @@
+include ':opus'
 rootProject.name='Opus'
 include ':app'
-include ':opus'
+include ':opusjni'
