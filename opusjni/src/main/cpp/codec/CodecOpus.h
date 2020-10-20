@@ -30,6 +30,8 @@ public:
     std::vector<short> encode(short *shorts, int length, int frameSize);
     void encoderRelease();
 
+    int decoderCreate(opus_int32 Fs, int numChannels);
+
     int decoderInit(int sampleRate, int numChannels);
     std::vector<uint8_t> decode(uint8_t *bytes, int length, int frameSize);
     std::vector<short> decode(short *shorts, int length, int frameSize);

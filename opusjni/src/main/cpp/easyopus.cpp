@@ -90,6 +90,17 @@ Java_com_theeasiestway_opus_Opus_encoderRelease(JNIEnv *env, jobject thiz) {
 
 extern "C"
 JNIEXPORT jint JNICALL
+Java_com_theeasiestway_opus_Opus_decoderCreate(
+        JNIEnv *env,
+        jobject thiz,
+        jint sample_rate,
+        jint num_channels
+) {
+    return codec.decoderCreate(sample_rate, num_channels);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
 Java_com_theeasiestway_opus_Opus_decoderInit(JNIEnv *env, jobject thiz, jint sample_rate,
                                              jint num_channels) {
     return codec.decoderInit(sample_rate, num_channels);

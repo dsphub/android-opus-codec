@@ -63,6 +63,7 @@ class Opus {
     fun encode(shorts: ShortArray, frameSize: Constants.FrameSize): ShortArray? {
         return encode(shorts, frameSize.v)
     }
+
     private external fun encode(shorts: ShortArray, frameSize: Int): ShortArray?
     external fun encoderRelease()
 
@@ -70,14 +71,25 @@ class Opus {
     // Decoder
     //
 
+    fun decoderCreate(
+        sampleRate: Constants.SampleRate,
+        channels: Constants.Channels
+    ): Int {
+        return decoderCreate(sampleRate.v, channels.v)
+    }
+
+    private external fun decoderCreate(sampleRate: Int, numChannels: Int): Int
+
     fun decoderInit(sampleRate: Constants.SampleRate, channels: Constants.Channels): Int {
         return decoderInit(sampleRate.v, channels.v)
     }
+
     private external fun decoderInit(sampleRate: Int, numChannels: Int): Int
 
     fun decode(bytes: ByteArray, frameSize: Constants.FrameSize): ByteArray? {
         return decode(bytes, frameSize.v)
     }
+
     private external fun decode(bytes: ByteArray, frameSize: Int): ByteArray?
 
     fun decode(shorts: ShortArray, frameSize: Constants.FrameSize): ShortArray? {

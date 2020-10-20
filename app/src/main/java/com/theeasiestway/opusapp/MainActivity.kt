@@ -9,14 +9,14 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.theeasiestway.opus.Constants
 import com.theeasiestway.opus.Opus
+import com.theeasiestway.opusapp.Logger.d
+import com.theeasiestway.opusapp.Logger.i
 import com.theeasiestway.opusapp.mic.ControllerAudio
 
 //
 // Created by Loboda Alexey on 21.05.2020.
 //
-
 class MainActivity : AppCompatActivity() {
-
     private val TAG = "OpusActivity"
     private val audioPermission = android.Manifest.permission.RECORD_AUDIO
     private val readPermission = android.Manifest.permission.READ_EXTERNAL_STORAGE
@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     private var needToConvert = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        i { "onCreate" }
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -60,12 +61,13 @@ class MainActivity : AppCompatActivity() {
         vStereo = findViewById(R.id.vStereo)
         vConvert = findViewById(R.id.vConvert)
 
-        vSampleRateSeek.setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener {
+        vSampleRateSeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 SAMPLE_RATE = getSampleRate(progress)
                 val lableText = "${SAMPLE_RATE.v} Hz"
                 vSampleRate.text = lableText
             }
+
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
@@ -88,13 +90,16 @@ class MainActivity : AppCompatActivity() {
         DEF_FRAME_SIZE = getDefaultFrameSize(SAMPLE_RATE.v)
         CHANNELS = if (vMono.isChecked) Constants.Channels.mono() else Constants.Channels.stereo()
         /** "CHUNK_SIZE = DEF_FRAME_SIZE.v * CHANNELS.v * 2" it's formula from opus.h "frame_size*channels*sizeof(opus_int16)" */
-        CHUNK_SIZE = DEF_FRAME_SIZE.v * CHANNELS.v * 2                                              // bytes or shorts in a frame
-        FRAME_SIZE_SHORT = Constants.FrameSize.fromValue(CHUNK_SIZE / CHANNELS.v)            // samples per channel
-        FRAME_SIZE_BYTE = Constants.FrameSize.fromValue(CHUNK_SIZE / 2 / CHANNELS.v)         // samples per channel
+        CHUNK_SIZE =
+            DEF_FRAME_SIZE.v * CHANNELS.v * 2                                              // bytes or shorts in a frame
+        FRAME_SIZE_SHORT =
+            Constants.FrameSize.fromValue(CHUNK_SIZE / CHANNELS.v)            // samples per channel
+        FRAME_SIZE_BYTE =
+            Constants.FrameSize.fromValue(CHUNK_SIZE / 2 / CHANNELS.v)         // samples per channel
     }
 
     private fun getSampleRate(v: Int): Constants.SampleRate {
-        return when(v) {
+        return when (v) {
             0 -> Constants.SampleRate._8000()
             1 -> Constants.SampleRate._12000()
             2 -> Constants.SampleRate._16000()
@@ -129,6 +134,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startLoop() {
+        d { "startLoop" }
         stopLoop()
 
         vSampleRateSeek.isEnabled = false
@@ -141,14 +147,16 @@ class MainActivity : AppCompatActivity() {
         recalculateCodecValues()
 
         codec.encoderCreate(SAMPLE_RATE, CHANNELS, APPLICATION)
-        codec.decoderInit(SAMPLE_RATE, CHANNELS)
+        codec.decoderCreate(SAMPLE_RATE, CHANNELS)
 
         ControllerAudio.initRecorder(SAMPLE_RATE.v, CHUNK_SIZE, CHANNELS.v == 1)
         ControllerAudio.initTrack(SAMPLE_RATE.v, CHANNELS.v == 1)
         ControllerAudio.startRecord()
         runLoop = true
         Thread {
-            while (runLoop) { if (handleShorts) handleShorts() else handleBytes() }
+            while (runLoop) {
+                if (handleShorts) handleShorts() else handleBytes()
+            }
             if (!runLoop) {
                 codec.encoderRelease()
                 codec.decoderRelease()
@@ -163,7 +171,10 @@ class MainActivity : AppCompatActivity() {
     private fun handleShorts() {
         val frame = ControllerAudio.getFrameShort() ?: return
         val encoded = codec.encode(frame, FRAME_SIZE_SHORT) ?: return
-        Log.d(TAG, "encoded: ${frame.size} shorts of ${if (CHANNELS.v == 1) "MONO" else "STEREO"} audio into ${encoded.size} shorts")
+        Log.d(
+            TAG,
+            "encoded: ${frame.size} shorts of ${if (CHANNELS.v == 1) "MONO" else "STEREO"} audio into ${encoded.size} shorts"
+        )
         val decoded = codec.decode(encoded, FRAME_SIZE_SHORT) ?: return
         Log.d(TAG, "decoded: ${decoded.size} shorts")
 
@@ -178,7 +189,10 @@ class MainActivity : AppCompatActivity() {
     private fun handleBytes() {
         val frame = ControllerAudio.getFrame() ?: return
         val encoded = codec.encode(frame, FRAME_SIZE_BYTE) ?: return
-        Log.d(TAG, "encoded: ${frame.size} bytes of ${if (CHANNELS.v == 1) "MONO" else "STEREO"} audio into ${encoded.size} bytes")
+        Log.d(
+            TAG,
+            "encoded: ${frame.size} bytes of ${if (CHANNELS.v == 1) "MONO" else "STEREO"} audio into ${encoded.size} bytes"
+        )
         val decoded = codec.decode(encoded, FRAME_SIZE_BYTE) ?: return
         Log.d(TAG, "decoded: ${decoded.size} bytes")
 
@@ -194,20 +208,32 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) startLoop()
         else if (checkSelfPermission(audioPermission) != PackageManager.PERMISSION_GRANTED ||
             checkSelfPermission(readPermission) != PackageManager.PERMISSION_GRANTED ||
-            checkSelfPermission(writePermission) != PackageManager.PERMISSION_GRANTED) {
+            checkSelfPermission(writePermission) != PackageManager.PERMISSION_GRANTED
+        ) {
             requestPermissions(arrayOf(audioPermission, readPermission, writePermission), 123)
         } else startLoop()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        i { "onRequestPermissionsResult" }
         if (permissions[0] == audioPermission &&
             permissions[1] == readPermission &&
             permissions[2] == writePermission &&
-            requestCode == 123) {
+            requestCode == 123
+        ) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED &&
                 grantResults[1] == PackageManager.PERMISSION_GRANTED &&
-                grantResults[2] == PackageManager.PERMISSION_GRANTED) startLoop()
-            else Toast.makeText(this, "App doesn't have enough permissions to continue", Toast.LENGTH_LONG).show()
+                grantResults[2] == PackageManager.PERMISSION_GRANTED
+            ) startLoop()
+            else Toast.makeText(
+                this,
+                "App doesn't have enough permissions to continue",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
