@@ -66,13 +66,20 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Bytes"
-                android:checked="true"/>
+                android:checked="true" />
 
             <RadioButton
                 android:id="@+id/vHandleShorts"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Shorts"/>
+                android:text="Shorts" />
+
+            <RadioButton
+                android:id="@+id/vHandleFloats"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Flotas" />
+
         </RadioGroup>
 
         <RadioGroup

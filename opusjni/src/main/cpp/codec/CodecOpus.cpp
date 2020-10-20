@@ -74,13 +74,6 @@ int CodecOpus::encoderSetComplexity(int complexity) {
     return opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(complexity));
 }
 
-std::vector<short> CodecOpus::encode(short *shorts, int length, int frameSize) {
-    std::vector<uint8_t> bytes = SamplesConverter::convert(&shorts, length);
-    std::vector<uint8_t> encoded = encode(bytes.data(), frameSize);
-    uint8_t *data = encoded.data();
-    return SamplesConverter::convert(&data, encoded.size());
-}
-
 std::vector<uint8_t> CodecOpus::encode(uint8_t *bytes, int frameSize) {
     std::vector<uint8_t> result;
 
@@ -101,6 +94,35 @@ std::vector<uint8_t> CodecOpus::encode(uint8_t *bytes, int frameSize) {
     free(outBuffer);
     return result;
 }
+
+std::vector<short> CodecOpus::encode(short *shorts, int length, int frameSize) {
+    std::vector<uint8_t> bytes = SamplesConverter::convert(&shorts, length);
+    std::vector<uint8_t> encoded = encode(bytes.data(), frameSize);
+    uint8_t *data = encoded.data();
+    return SamplesConverter::convert(&data, encoded.size());
+}
+
+std::vector<uint8_t> CodecOpus::encode(const float *floats, int frameSize) {
+    std::vector<uint8_t> result;
+
+    int ret = checkForNull("encode", true);
+    if (ret < 0) return result;
+
+    int maxBytesCount = sizeof(unsigned char) * 1024 * 4;
+    unsigned char *outBuffer = (unsigned char *) malloc((size_t) maxBytesCount);
+
+    int resultLength = opus_encode_float(encoder, floats, frameSize, outBuffer,
+                                         maxBytesCount);
+    if (resultLength <= 0) {
+        LOGE(TAG, "[encode] error: %s", opus_strerror(resultLength));
+        return result;
+    }
+
+    std::copy(&outBuffer[0], &outBuffer[resultLength], std::back_inserter(result));
+    free(outBuffer);
+    return result;
+}
+
 
 void CodecOpus::encoderRelease() {
     if (encoder) opus_encoder_destroy(encoder);
@@ -189,17 +211,22 @@ std::vector<uint8_t> CodecOpus::decode(uint8_t *bytes, int length, int frameSize
     return result;
 }
 
-/*
- int opus_decode_float(OpusDecoder *st, const unsigned char *data,
-      opus_int32 len, opus_val16 *pcm, int frame_size, int decode_fec)
-{
-   if(frame_size<=0)
-      return OPUS_BAD_ARG;
-   return opus_decode_native(st, data, len, pcm, frame_size, decode_fec, 0, NULL, 0);
+std::vector<float> CodecOpus::decodeFloat(uint8_t *data, int length, int frameSize) {
+    float *outBuffer = (float *) malloc(sizeof(float) * 1024);
+    int resultLength = opus_decode_float(decoder, (unsigned char *) data, (opus_int32) length,
+            outBuffer, frameSize, 0);  //TODO pcm type
+    if (resultLength < 0) {
+        LOGE(TAG, "[decodeFloat] ret: %d; error: %s", resultLength, opus_strerror(resultLength));
+    }
+
+    std::vector<float> result;
+    for (int i = 0; i < resultLength; ++i) {
+        result.push_back(outBuffer[i]);
+    }
+    free(outBuffer);
+    return result;
 }
 
-
- */
 
 void CodecOpus::decoderRelease() {
     decoderNumChannels = -1;

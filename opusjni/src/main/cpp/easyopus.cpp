@@ -79,6 +79,24 @@ Java_com_theeasiestway_opus_Opus_encode___3SI(JNIEnv *env, jobject thiz, jshortA
 }
 
 extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_com_theeasiestway_opus_Opus_encode___3FI(JNIEnv *env, jobject thiz, jfloatArray floats,
+                                              jint frame_size) {
+    jfloat *nativeFloats = env->GetFloatArrayElements(floats, 0);
+//    jint length = env->GetArrayLength(floats);
+
+    std::vector<unsigned char> encodedData = codec.encode(nativeFloats, frame_size);
+    int encodedSize = encodedData.size();
+    if (encodedSize <= 0) return nullptr;
+
+    jbyteArray result = env->NewByteArray(encodedSize);
+    env->SetByteArrayRegion(result, 0, encodedSize, (jbyte *) encodedData.data());
+    env->ReleaseFloatArrayElements(floats, nativeFloats, 0);
+
+    return result;
+}
+
+extern "C"
 JNIEXPORT void JNICALL
 Java_com_theeasiestway_opus_Opus_encoderRelease(JNIEnv *env, jobject thiz) {
     codec.encoderRelease();
@@ -139,6 +157,21 @@ Java_com_theeasiestway_opus_Opus_decode___3SI(JNIEnv *env, jobject thiz, jshortA
     env->SetShortArrayRegion(result, 0, encodedSize, encodedData.data());
     env->ReleaseShortArrayElements(shorts, nativeShorts, 0);
 
+    return result;
+}
+
+extern "C"
+JNIEXPORT jfloatArray JNICALL
+Java_com_theeasiestway_opus_Opus_decodeFloat(
+        JNIEnv *env, jobject thiz, jbyteArray bytes, jint len, jint frame_size
+) {
+    jbyte *nativeBytes = env->GetByteArrayElements(bytes, 0);
+
+    std::vector<float> decodedData = codec.decodeFloat((unsigned char *) nativeBytes, (int) len, frame_size);
+
+    jfloatArray result = env->NewFloatArray(decodedData.size());
+    env->SetFloatArrayRegion(result, 0, decodedData.size(), (jfloat *) decodedData.data());
+    env->ReleaseByteArrayElements(bytes, nativeBytes, 0);
     return result;
 }
 

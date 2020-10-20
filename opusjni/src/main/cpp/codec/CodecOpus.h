@@ -28,13 +28,20 @@ public:
     int encoderSetComplexity(int complexity);
     std::vector<uint8_t> encode(uint8_t *bytes, int frameSize);
     std::vector<short> encode(short *shorts, int length, int frameSize);
+
+    std::vector<uint8_t> encode(const float *floats, int frameSize);
+
     void encoderRelease();
 
     int decoderCreate(opus_int32 Fs, int numChannels);
 
     int decoderInit(int sampleRate, int numChannels);
     std::vector<uint8_t> decode(uint8_t *bytes, int length, int frameSize);
+
     std::vector<short> decode(short *shorts, int length, int frameSize);
+
+    std::vector<float> decodeFloat(uint8_t *bytes, int length, int frameSize);
+
     void decoderRelease();
 
     ~CodecOpus();
