@@ -8,14 +8,15 @@ import android.util.Log
 //
 
 class Opus {
-
     companion object {
-
-        val TAG = "CodecOpus"
+        const val TAG = "CodecOpus"
 
         init {
-            try { System.loadLibrary("easyopus") }
-            catch (e: Exception) { Log.e(TAG, "Couldn't load opus library: $e") }
+            try {
+                System.loadLibrary("easyopus")
+            } catch (e: Exception) {
+                Log.e(TAG, "Couldn't load opus library: $e")
+            }
         }
     }
 
@@ -23,14 +24,30 @@ class Opus {
     // Encoder
     //
 
-    fun encoderInit(sampleRate: Constants.SampleRate, channels: Constants.Channels, application: Constants.Application): Int {
+    fun encoderCreate(
+        sampleRate: Constants.SampleRate,
+        channels: Constants.Channels,
+        application: Constants.Application
+    ): Int {
+        return encoderCreate(sampleRate.v, channels.v, application.v)
+    }
+
+    private external fun encoderCreate(sampleRate: Int, numChannels: Int, application: Int): Int
+
+    fun encoderInit(
+        sampleRate: Constants.SampleRate,
+        channels: Constants.Channels,
+        application: Constants.Application
+    ): Int {
         return encoderInit(sampleRate.v, channels.v, application.v)
     }
+
     private external fun encoderInit(sampleRate: Int, numChannels: Int, application: Int): Int
 
     fun encoderSetBitrate(bitrate: Constants.Bitrate): Int {
         return encoderSetBitrate(bitrate.v)
     }
+
     private external fun encoderSetBitrate(bitrate: Int): Int
 
     fun encoderSetComplexity(complexity: Constants.Complexity): Int {

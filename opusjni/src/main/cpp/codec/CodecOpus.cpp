@@ -10,9 +10,34 @@
 // Encoder
 //
 
+#define DEFAULT_ERROR_ID -1
+
+int CodecOpus::encoderCreate(opus_int32 Fs, int numChannels, int application) {
+    if (numChannels != 1 && numChannels != 2)
+        LOGE(TAG,
+             "[encoderCreate] numChannels is incorrect: %d - it must be either 1 or 2, otherwise the encoder may works incorrectly",
+             numChannels);
+
+    int ret = DEFAULT_ERROR_ID;
+    encoder = opus_encoder_create(Fs, numChannels, application, &ret);
+
+    if (ret < 0) {
+        LOGE(TAG, "[encoderCreate] couldn't create encoder; ret: %d; error: %s", ret,
+             opus_strerror(ret));
+        free(encoder);
+        return -1;
+    } else {
+        LOGD(TAG, "[encoderCreate] encoder successfully initialized");
+        return 0;
+    }
+}
+
 int CodecOpus::encoderInit(int sampleRate, int numChannels, int application) {
 
-    if (numChannels != 1 && numChannels != 2) LOGE(TAG, "[encoderInit] numChannels is incorrect: %d - it must be either 1 or 2, otherwise the encoder may works incorrectly", numChannels);
+    if (numChannels != 1 && numChannels != 2)
+        LOGE(TAG,
+             "[encoderInit] numChannels is incorrect: %d - it must be either 1 or 2, otherwise the encoder may works incorrectly",
+             numChannels);
 
     int size = opus_encoder_get_size(numChannels);
 
@@ -137,6 +162,18 @@ std::vector<uint8_t> CodecOpus::decode(uint8_t *bytes, int length, int frameSize
     free(outBuffer);
     return result;
 }
+
+/*
+ int opus_decode_float(OpusDecoder *st, const unsigned char *data,
+      opus_int32 len, opus_val16 *pcm, int frame_size, int decode_fec)
+{
+   if(frame_size<=0)
+      return OPUS_BAD_ARG;
+   return opus_decode_native(st, data, len, pcm, frame_size, decode_fec, 0, NULL, 0);
+}
+
+
+ */
 
 void CodecOpus::decoderRelease() {
     decoderNumChannels = -1;

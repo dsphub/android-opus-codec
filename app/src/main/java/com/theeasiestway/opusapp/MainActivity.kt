@@ -140,7 +140,7 @@ class MainActivity : AppCompatActivity() {
         val handleShorts = vShorts.isChecked
         recalculateCodecValues()
 
-        codec.encoderInit(SAMPLE_RATE, CHANNELS, APPLICATION)
+        codec.encoderCreate(SAMPLE_RATE, CHANNELS, APPLICATION)
         codec.decoderInit(SAMPLE_RATE, CHANNELS)
 
         ControllerAudio.initRecorder(SAMPLE_RATE.v, CHUNK_SIZE, CHANNELS.v == 1)

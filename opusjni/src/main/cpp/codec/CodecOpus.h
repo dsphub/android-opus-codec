@@ -21,6 +21,8 @@ private:
     int checkForNull(const char *methodName, bool isEncoder);
 
 public:
+    int encoderCreate(opus_int32 Fs, int numChannels, int application);
+
     int encoderInit(int sampleRate, int numChannels, int application);
     int encoderSetBitrate(int bitrate);
     int encoderSetComplexity(int complexity);
