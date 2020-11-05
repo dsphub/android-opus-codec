@@ -1,9 +1,9 @@
 package com.theeasiestway.opusapp
 
 import android.content.pm.PackageManager
+import android.media.AudioFormat
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -11,13 +11,13 @@ import com.theeasiestway.opus.Constants
 import com.theeasiestway.opus.Opus
 import com.theeasiestway.opusapp.Logger.d
 import com.theeasiestway.opusapp.Logger.i
+import com.theeasiestway.opusapp.Logger.v
 import com.theeasiestway.opusapp.mic.ControllerAudio
 
 //
 // Created by Loboda Alexey on 21.05.2020.
 //
 class MainActivity : AppCompatActivity() {
-    private val TAG = "OpusActivity"
     private val audioPermission = android.Manifest.permission.RECORD_AUDIO
     private val readPermission = android.Manifest.permission.READ_EXTERNAL_STORAGE
     private val writePermission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -39,8 +39,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var SAMPLE_RATE: Constants.SampleRate
     private lateinit var CHANNELS: Constants.Channels
     private lateinit var DEF_FRAME_SIZE: Constants.FrameSize
-    private lateinit var FRAME_SIZE_SHORT: Constants.FrameSize
     private lateinit var FRAME_SIZE_BYTE: Constants.FrameSize
+    private lateinit var FRAME_SIZE_SHORT: Constants.FrameSize
     private lateinit var FRAME_SIZE_FLOAT: Constants.FrameSize
 
     private var runLoop = false
@@ -94,11 +94,13 @@ class MainActivity : AppCompatActivity() {
         CHANNELS = if (vMono.isChecked) Constants.Channels.mono() else Constants.Channels.stereo()
         /** "CHUNK_SIZE = DEF_FRAME_SIZE.v * CHANNELS.v * 2" it's formula from opus.h "frame_size*channels*sizeof(opus_int16)" */
         CHUNK_SIZE =
-            DEF_FRAME_SIZE.v * CHANNELS.v * 2                                              // bytes or shorts in a frame
+            DEF_FRAME_SIZE.v * CHANNELS.v * 2                                       // bytes or shorts or floats in a frame
+        FRAME_SIZE_BYTE =
+            Constants.FrameSize.fromValue(CHUNK_SIZE / 2 / CHANNELS.v)        // samples per channel
         FRAME_SIZE_SHORT =
             Constants.FrameSize.fromValue(CHUNK_SIZE / CHANNELS.v)            // samples per channel
-        FRAME_SIZE_BYTE =
-            Constants.FrameSize.fromValue(CHUNK_SIZE / 2 / CHANNELS.v)         // samples per channel
+        FRAME_SIZE_FLOAT = Constants.FrameSize.fromValue(160)
+        //Constants.FrameSize.fromValue(CHUNK_SIZE * 2 / CHANNELS.v)        // samples per channel
     }
 
     private fun getSampleRate(v: Int): Constants.SampleRate {
@@ -157,7 +159,21 @@ class MainActivity : AppCompatActivity() {
         codec.encoderCreate(SAMPLE_RATE, CHANNELS, APPLICATION)
         codec.decoderCreate(SAMPLE_RATE, CHANNELS)
 
-        ControllerAudio.initRecorder(SAMPLE_RATE.v, CHUNK_SIZE, CHANNELS.v == 1)
+        val frameSize = when {
+            handleBytes -> FRAME_SIZE_SHORT.v //FRAME_SIZE_BYTE.v
+            handleShorts -> FRAME_SIZE_SHORT.v
+            handleFloats -> FRAME_SIZE_FLOAT.v
+            else -> CHUNK_SIZE
+        }
+        val pcm = when {
+            handleBytes -> AudioFormat.ENCODING_PCM_16BIT
+            handleShorts -> AudioFormat.ENCODING_PCM_16BIT
+            handleFloats -> AudioFormat.ENCODING_PCM_FLOAT
+            else -> AudioFormat.ENCODING_PCM_16BIT
+        }
+
+
+        ControllerAudio.initRecorder(SAMPLE_RATE.v, frameSize, pcm, CHANNELS.v == 1)
         ControllerAudio.initTrack(SAMPLE_RATE.v, CHANNELS.v == 1)
         ControllerAudio.startRecord()
         runLoop = true
@@ -168,6 +184,8 @@ class MainActivity : AppCompatActivity() {
                     handleShorts -> handleShorts()
                     handleFloats -> handleFloats()
                 }
+                d { "handle ???" }
+                runLoop = false//FIXIT
             }
             if (!runLoop) {
                 codec.encoderRelease()
@@ -181,68 +199,63 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleFloats() {
-        d { "handleFloats" }
+        d { "handleFloats fs=${FRAME_SIZE_FLOAT.v}" }
         val frame = ControllerAudio.getFrameFloat() ?: return
-        val shorts = ByteArray(frame.size)
-        for ((id, float) in frame.withIndex()) {
-            shorts[id] = (Byte.MAX_VALUE * float.coerceIn(-1.0f, 1.0f)
-                .toShort()).toByte() //TODO to converter
-            d { "handleFloats f=$float b=${shorts[id]}" }
-        }
+//        val shorts = ByteArray(frame.size)
+//        for ((id, float) in frame.withIndex()) {
+//            shorts[id] = (Byte.MAX_VALUE * float.coerceIn(-1.0f, 1.0f)
+//                .toShort()).toByte() //TODO to converter
+//            d { "handleFloats f=$float b=${shorts[id]}" }
+//        }
 
-        val encoded = codec.encode(shorts, FRAME_SIZE_FLOAT) ?: return
-        Log.d(
-            TAG,
-            "encoded: ${frame.size} floats of ${if (CHANNELS.v == 1) "MONO" else "STEREO"} audio into ${encoded.size} floats"
-        )
+        val encoded = codec.encode(frame, FRAME_SIZE_FLOAT) ?: return
+        v { "encoded: ${frame.size} floats of ${if (CHANNELS.v == 1) "MONO" else "STEREO"} audio into ${encoded.size} bytes" }
         val decoded = FloatArray(frame.size)
         codec.decodeFloat(encoded, encoded.size, decoded, FRAME_SIZE_FLOAT)
-        Log.d(TAG, "decoded: ${decoded.size} floats")
+        v { "decoded: ${decoded.size} floats" }
 
 //        if (needToConvert) {
 //            val converted = codec.convert(decoded) ?: return
 //            Log.d(TAG, "converted: ${decoded.size} shorts into ${converted.size} bytes")
 //            ControllerAudio.write(converted)
 //        } else ControllerAudio.write(decoded)
-        Log.d(TAG, "===========================================")
+        v { "===========================================" }
     }
 
     private fun handleShorts() {
-        d { "handleShorts" }
+        d { "handleShorts fs=${FRAME_SIZE_SHORT.v}" }
         val frame = ControllerAudio.getFrameShort() ?: return
-        val encoded = codec.encode(frame, FRAME_SIZE_SHORT) ?: return
-        Log.d(
-            TAG,
-            "encoded: ${frame.size} shorts of ${if (CHANNELS.v == 1) "MONO" else "STEREO"} audio into ${encoded.size} shorts"
-        )
+        val encoded = codec.encode(frame, FRAME_SIZE_SHORT) //?: return
+        if (encoded == null) {
+            d { "handleShorts NULL" }
+            return
+        }
+        v { "encoded: ${frame.size} shorts of ${if (CHANNELS.v == 1) "MONO" else "STEREO"} audio into ${encoded.size} shorts" }
         val decoded = codec.decode(encoded, FRAME_SIZE_SHORT) ?: return
-        Log.d(TAG, "decoded: ${decoded.size} shorts")
+        v { "decoded: ${decoded.size} shorts" }
 
         if (needToConvert) {
             val converted = codec.convert(decoded) ?: return
-            Log.d(TAG, "converted: ${decoded.size} shorts into ${converted.size} bytes")
+            v { "converted: ${decoded.size} shorts into ${converted.size} bytes" }
             ControllerAudio.write(converted)
         } else ControllerAudio.write(decoded)
-        Log.d(TAG, "===========================================")
+        v { "===========================================" }
     }
 
     private fun handleBytes() {
-        d { "handleBytes" }
+        d { "handleBytes fs=${FRAME_SIZE_BYTE.v}" }
         val frame = ControllerAudio.getFrame() ?: return
         val encoded = codec.encode(frame, FRAME_SIZE_BYTE) ?: return
-        Log.d(
-            TAG,
-            "encoded: ${frame.size} bytes of ${if (CHANNELS.v == 1) "MONO" else "STEREO"} audio into ${encoded.size} bytes"
-        )
+        v { "encoded: ${frame.size} bytes of ${if (CHANNELS.v == 1) "MONO" else "STEREO"} audio into ${encoded.size} bytes" }
         val decoded = codec.decode(encoded, FRAME_SIZE_BYTE) ?: return
-        Log.d(TAG, "decoded: ${decoded.size} bytes")
+        v { "decoded: ${decoded.size} bytes" }
 
         if (needToConvert) {
             val converted = codec.convert(decoded) ?: return
-            Log.d(TAG, "converted: ${decoded.size} bytes into ${converted.size} shorts")
+            v { "converted: ${decoded.size} bytes into ${converted.size} shorts" }
             ControllerAudio.write(converted)
         } else ControllerAudio.write(decoded)
-        Log.d(TAG, "===========================================")
+        v { "===========================================" }
     }
 
     private fun requestPermissions() {

@@ -67,6 +67,13 @@ class Opus {
     }
 
     private external fun encode(shorts: ShortArray, frameSize: Int): ShortArray?
+
+    fun encode(floats: FloatArray, frameSize: Constants.FrameSize): ByteArray? {
+        return encode(floats, frameSize.v)
+    }
+
+    private external fun encode(floats: FloatArray, frameSize: Int): ByteArray?
+
     external fun encoderRelease()
 
     //

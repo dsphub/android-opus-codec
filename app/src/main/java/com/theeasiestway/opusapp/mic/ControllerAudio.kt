@@ -5,6 +5,7 @@ import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
 import android.util.Log
 import com.theeasiestway.opusapp.Logger.d
+import com.theeasiestway.opusapp.Logger.v
 
 //
 // Created by Loboda Alexey on 21.05.2020.
@@ -25,7 +26,8 @@ object ControllerAudio {
     // Record
     //
 
-    fun initRecorder(sampleRate: Int, frameSize: Int, isMono: Boolean) {
+    fun initRecorder(sampleRate: Int, frameSize: Int, pcm: Int, isMono: Boolean) {
+        d { "initRecorder frameSize=$frameSize" }
         val bufferSize = AudioRecord.getMinBufferSize(
             sampleRate,
             if (isMono) AudioFormat.CHANNEL_IN_MONO else AudioFormat.CHANNEL_IN_STEREO,
@@ -37,7 +39,7 @@ object ControllerAudio {
                     MediaRecorder.AudioSource.MIC,
                     sampleRate,
                     if (isMono) AudioFormat.CHANNEL_IN_MONO else AudioFormat.CHANNEL_IN_STEREO,
-                    AudioFormat.ENCODING_PCM_16BIT,
+                    pcm,
                     bufferSize
                 )
 
@@ -76,19 +78,23 @@ object ControllerAudio {
     }
 
     fun getFrame(): ByteArray? {
+        d { "getFrameByte fs=$frameSize" }
         val frame = ByteArray(frameSize)
         var offset = 0
         var remained = frame.size
+        d { "getFrameByte fs=${frame.size}???" }
         while (remained > 0) {
             val read = recorder.read(frame, offset, remained)
             offset += read
             remained -= read
+            v { "getFrameByte read=$read offset=$offset remained=$remained" }
         }
         if (remained <= 0) return frame
         return null
     }
 
     fun getFrameShort(): ShortArray? {
+        d { "getFrameShort fs=$frameSize" }
         val frame = ShortArray(frameSize)
         var offset = 0
         var remained = frame.size
@@ -96,23 +102,24 @@ object ControllerAudio {
             val read = recorder.read(frame, offset, remained)
             offset += read
             remained -= read
+            v { "getFrameShort read=$read offset=$offset remained=$remained" }
         }
         if (remained <= 0) return frame
         return null
     }
 
     fun getFrameFloat(): FloatArray? {
-        d { "getFrameFloat" }
+        d { "getFrameFloat fs=$frameSize" }
         val frame = FloatArray(frameSize)
         var offset: Int = 0
         var remained = frame.size
         d { "getFrameFloat1" }
-        while (remained > 0) {
-            val read: Int = recorder.read(frame, offset, remained, AudioRecord.READ_BLOCKING)
-            offset += read
-            remained -= read
-        }
-        d { "getFrameFloat2" }
+//        while (remained > 0) {
+        val read: Int = recorder.read(frame, offset, remained, AudioRecord.READ_BLOCKING)
+        offset += read
+        remained -= read
+        v { "getFrameFloat read=$read offset=$offset remained=$remained" }
+//        }
         if (remained <= 0) return frame
         return null
     }
